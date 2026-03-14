@@ -2,7 +2,7 @@
 title: "The Future of Agentic Security: From Chatbots to Autonomous Swarms"
 author: tbd
 date: 6-Mar-2026
-version: 1.0
+version: 1.1
 ---
 
 # The Future of Agentic Security: From Chatbots to Autonomous Swarms
@@ -12,17 +12,20 @@ version: 1.0
 
 - [Introduction](#introduction)
 - [Executive Summary](#executive-summary)
+- [Reader Guide and Scope](#reader-guide-and-scope)
+- [Terminology and Threat Model Vocabulary](#terminology-and-threat-model-vocabulary)
 - [Scenario Deconstruction](#scenario-deconstruction)
   - [The 2 A.M. Incident](#the-2-am-incident)
   - [The Agent That Asked for Help](#the-agent-that-asked-for-help)
   - [Who Owns This Code?](#who-owns-this-code)
   - [The Human on the Loop](#the-human-on-the-loop)
   - [Everyone in the Channel](#everyone-in-the-channel)
+- [Control Priorities and Action Agenda](#control-priorities-and-action-agenda)
 - [Conclusion: Balancing Utility and Control](#conclusion-balancing-utility-and-control)
 
 ## Introduction
 
-The paradigm of enterprise AI adoption is shifting rapidly from human-initiated, isolated tools to event-driven, autonomous agentic swarms integrated directly into core operational workflows. To meaningfully engage in the design and discussion of future security controls, security engineering experts, CxOs, and standards bodies require a clear, unvarnished framing of how this state-of-the-art technology operates in the wild today. Through a composite 2 a.m. incident response scenario and structured impact analysis, this paper illustrates the systemic challenges that the industry’s investments in dynamic control, identity, and cryptographic provenance must be designed to solve.
+The paradigm of enterprise AI adoption is shifting rapidly from human-initiated, isolated tools to event-driven, autonomous agentic swarms integrated directly into core operational workflows. To meaningfully engage in the design and discussion of future security controls, security engineering experts, CxOs, and standards bodies require a clear framing of how this technology can operate in frontier deployments today and how it may generalize in the near future. Through a composite 2 a.m. incident response scenario and structured impact analysis, this paper illustrates the systemic challenges that the industry's investments in dynamic control, identity, and cryptographic provenance must be designed to solve.
 
 ## Executive Summary
 
@@ -30,13 +33,38 @@ The scenario that follows traces this shift to its operational conclusion: auton
 
 Throughout this shift, organizational control objectives — auditability, separation of duties, least privilege, data protection — do not change; what changes are the foundational assumptions underlying how those controls are enforced. Each phase of the narrative is deconstructed across four dimensions: the adversarial threat models these architectures invite, the implied access and entitlements they silently accumulate, the infrastructure and telemetry upgrades required to preserve those control objectives, and the open research problems where current approaches offer no proven solution.
 
-**The central finding:** when the enterprise chat channel becomes the de facto orchestration bus for agent swarms, and natural language replaces network protocols as the vector for lateral movement, legacy enforcement mechanisms — static RBAC, long-lived service tokens, regex-based DLP, and OS-level endpoint detection — remain anchored to the execution and operational patterns of human-driven workflows. Agents that autonomously negotiate intent, semantically delegate tasks, accumulate privileges across trust boundaries, and traverse enterprise systems through natural language **produce an attack surface at the semantic layer that these mechanisms were never designed to engage.**
+**The central finding:** when the enterprise chat channel becomes the de facto orchestration bus for agent swarms, and natural language replaces network protocols as the vector for lateral movement, legacy enforcement mechanisms — static RBAC, long-lived service tokens, regex-based DLP, and OS-level endpoint detection — remain anchored to the execution and operational patterns of human-driven workflows. Agents that autonomously negotiate intent, semantically delegate tasks, accumulate privileges across trust boundaries, and traverse enterprise systems through natural language **produce an attack surface at the semantic layer that these mechanisms do not engage well today.**
 
 Re-establishing those control objectives at the semantic layer requires a fundamentally different enforcement stack — ephemeral compute with zero-state initialization to eliminate persistent footholds, dynamic context-aware identity management for Non-Human Identities to replace static service tokens, semantic egress filtering to catch what regex-based DLP cannot, immutable GitOps enforcement to preserve separation of duties when agents can author code, and Agent Detection and Response (ADR) operating at the prompt and tool-use layer where OS-level sensors are blind.
 
 Two open research problems mark the hard limits of this effort: *intent-based authorization* — current RBAC and ABAC models have no mechanism to authorize the semantic meaning of a natural language request between agents, leaving the most fundamental access control question unanswered — and the *semantic mosaic effect* — agents can infer and exfiltrate sensitive information without ever quoting the source material, a class of data loss that no existing prevention architecture can reliably detect.
 
-These are not gaps awaiting incremental engineering; they represent areas where the foundational assumptions of legacy security have no proven successor, and where the industry has the narrowing opportunity to define the control architecture before autonomous systems outscale it.
+These are not gaps awaiting incremental engineering; they represent areas where the foundational assumptions of legacy security have no proven successor, and where the industry has a narrowing opportunity to define the control architecture before autonomous systems outscale it.
+
+## Reader Guide and Scope
+
+This document should be read as a **security architecture position paper**. It is intended for security engineering leaders, platform builders, and standards bodies. It is not a market survey, and it does not claim that every element of the composite scenario is already common practice across the industry.
+
+To keep the analysis precise, the paper uses three framing labels:
+
+- **Observed in frontier deployments today**: behavior patterns already visible in narrow but real operating environments.
+- **Emerging pattern**: behavior that exists in partial form today and is likely to become more common as agent platforms mature.
+- **Forward-looking design assumption**: a plausible near-term extension used to stress-test controls before the deployment pattern becomes widespread.
+
+The scenario below intentionally mixes all three. Each phase is labeled so readers can distinguish what is being reported, what is being extrapolated, and what is being proposed as a control-design target.
+
+## Terminology and Threat Model Vocabulary
+
+Several terms in this paper are used in a deliberately scoped way. The goal is not to coin jargon for its own sake, but to give defenders reusable language for attack paths that are awkward to describe with existing terms alone.
+
+| Term | Meaning in this paper | Attacker precondition | Defender-observable signal |
+|------|-----------------------|-----------------------|----------------------------|
+| **Indirect Prompt Injection (IPI)** | Untrusted content embedded in logs, tickets, docs, or messages causes an agent to reinterpret its task or tool use. | Attacker can place crafted content in a source the agent will later ingest. | Unexpected tool calls or retrieval behavior after reading untrusted context. |
+| **Privilege Escalation via Proxy** | A less-privileged agent gains effective access by persuading a more-privileged agent to act on its behalf. | One agent can communicate with another in natural language or structured delegation. | Higher-privilege actions that are semantically traceable to a lower-privilege request. |
+| **Orchestrator-in-the-Middle (AitM)** | A compromised coordinating agent fragments context and misrepresents peer findings or human approvals to sub-agents. | One agent acts as the sole broker across partitioned channels or tasks. | Divergent agent views of shared state, approvals, or incident chronology. |
+| **Semantic Mosaic Effect** | Sensitive information is inferred from individually benign sources and exfiltrated as a synthesized conclusion rather than a quoted secret. | Broad read access across multiple systems or corpora. | Output that is sensitive in meaning even when it contains no exact protected strings. |
+| **Semantic Smurfing** | Malicious intent is broken into multiple low-signal requests across channels, agents, or time windows to evade per-message inspection. | Attacker can distribute actions across several prompts or actors. | A cross-thread pattern that looks benign locally but harmful in aggregate. |
+| **Cognitive Health** | A shorthand for whether an agent's current context, policy state, and recent reasoning trajectory remain trustworthy enough for delegation or tool use. | The agent can be influenced by untrusted inputs, hidden instructions, or poisoned memory. | Abrupt semantic drift, anomalous tool selection, or policy-violating reasoning patterns. |
 
 ## Scenario Deconstruction
 
@@ -44,6 +72,8 @@ These are not gaps awaiting incremental engineering; they represent areas where 
 > *Below is a composite scenario based on how frontier organizations are actively deploying multi-agent systems today. We present the narrative in sequential phases, pausing after each to deconstruct the adversarial threat models these architectures invite, the implied access and entitlements they require, the infrastructure and telemetry upgrades necessary to operate them safely, and the open research problems where current approaches offer no proven solution.*
 
 ### The 2 A.M. Incident
+
+**Framing:** Observed in frontier deployments today, with limited extrapolation around the breadth of autonomous activation and cross-system access.
 
 At 2 a.m. on a quiet weeknight, an alert fired inside a CoSAI member's infrastructure: an outage was underway. No human had noticed yet. But something else had. An autonomous on-call agent, built on an agent SDK, snapped awake. It had been dormant, sleeping until exactly this kind of moment. Within seconds, it entered an agentic loop, pulling logs, scanning monitoring dashboards, and reading internal documentation. Its first real action was social: it created a Slack channel, dropped itself in, and queried the corporate on-call schedule, pulling in the current shift—a unified rotation of human engineers and specialized AI agents (see [Autonomous Activation](#fig-autonomous-activation)).
 
@@ -122,6 +152,8 @@ sequenceDiagram
 
 ### The Agent That Asked for Help
 
+**Framing:** Emerging pattern. Agent-to-agent delegation via chat exists in narrower workflows today; generalized natural-language task brokering across multiple agents is a near-term extension.
+
 Next, the on-call agent traced the outage to a code push from hours earlier, by reading the push logs. It read the stack trace, identified the offending change, and then did something unmistakably new: it reached out to a designated remediation agent in the Slack channel, one explicitly scoped and authorized to draft code patches during active incidents, and asked it for help. In plain English, on Slack, one AI said to another: "Can you write the code change that would solve this problem for me?" The second agent responded, reviewed the issue, and produced a fix.
  
  The on-call agent posts: "Thank you, this is very helpful." The coding agent responds: "You're welcome! Happy to help!" (see [Agent-to-Agent Delegation](#fig-agent-delegation)).
@@ -186,11 +218,24 @@ sequenceDiagram
 > Behavioral analytics must shift from tracking OS-level binaries to tracking **API call frequency and natural language intent**.
 > 
 > #### Research Problems (Open Challenges)
-> 
+>
 > * **Intent-Based Authorization**  
 > Securing "Natural Language APIs" requires authorizing the *intent* of a prompt, which current RBAC/ABAC models cannot fundamentally do.  
 > * **Inter-Agent Semantic Health Attestation**  
 > Establishing zero-trust verification between agents—ensuring Agent B can verify Agent A's internal cognitive state hasn't been covertly poisoned before accepting a request—is an unsolved area of multi-agent systems research (see [Research: Authorization and Attestation](#fig-research-authorization)).
+>
+> #### Near-Term Design Directions
+>
+> The absence of a full solution does not mean the design space is empty. Partial approaches worth exploring now include:
+>
+> * **Constrained Task Schemas**  
+> Require delegated requests to declare an action class, target asset, expected artifact, and authorizing incident or thread identifier rather than sending only free text.  
+> * **Signed Delegation Envelopes**  
+> Bind the requester identity, health status, and approval context to the request metadata so the receiving agent can verify provenance before acting.  
+> * **Human-Scoped Delegation Tokens**  
+> Issue downstream action tokens that remain cryptographically tied to the human or NHI principal and event context that authorized the delegation.  
+>
+> None of these fully solve intent-based authorization, but each reduces ambiguity and narrows the room for semantic privilege escalation.
 >
 > ![Open Research Problems: Authorization and Attestation](diagrams/research-authorization-attestation.svg)<!--{#fig-research-authorization width=55%}-->
 
@@ -199,6 +244,8 @@ sequenceDiagram
 ---
 
 ### Who Owns This Code?
+
+**Framing:** Observed to emerging pattern. Enterprise search and knowledge agents are already common; broad, cross-corpus retrieval with delegated context is where the risk compounds.
 
 In parallel, the on-call agent reached out to a third agent—a specialized knowledge-retrieval bot built and authorized to map internal documentation and organizational topology during events—and asked it for the most recent code owner and best contacts for this feature. It pulled them into the channel (see [Swarm Expansion](#fig-swarm-expansion)).
 
@@ -267,6 +314,9 @@ sequenceDiagram
 >   * **Contextual Data Fencing** - The search agent's query scope is dynamically bounded by the active human/NHI invoker's entitlements; it never searches as a "super admin", 
 >   * **Semantic Egress Filtering** - DLP must look beyond regex patterns and block the semantic equivalents of sensitive data from entering the shared chat bus, and 
 >   * **Rate & Volume Bounding** - Cryptographic limits on the number of documents an NHI can retrieve or synthesize per minute, triggering automatic circuit breakers upon violation.  
+> 
+> **Worked Example: The Semantic Mosaic Effect**  
+> A search agent may read one engineering document that names a legacy service account, a second incident note that mentions a temporary firewall exception, and a third all-hands transcript that references an upcoming datacenter migration. None of the individual sources contains a directly protectable secret string. But the agent can still synthesize a high-value conclusion such as: "The least-monitored path into the migration environment is the legacy service account while the firewall exception remains open." That output can be operationally sensitive even though no source sentence was copied verbatim and no regex-based DLP rule fired.  
 > * **Required Telemetry & Observability**  
 > User Entity and Behavior Analytics (UEBA) must be tuned specifically for NHIs to detect anomalous query volumes across disparate domains.
 > 
@@ -283,6 +333,8 @@ sequenceDiagram
 ---
 
 ### The Human on the Loop
+
+**Framing:** Emerging pattern with forward-looking operational assumptions. PR drafting by agents is already practical; treating conversational visibility as a sufficient approval surface is the stronger extrapolation under scrutiny here.
 
 By the time the human on-caller checked their phone ten minutes after the page, the root cause had been identified, a code fix was written, and a pull request was sitting in review, waiting for a human to approve and deploy. The entire investigation and remediation had been drafted by agents collaborating with each other in a channel where humans could watch every step unfold in real time (see [Human-on-the-Loop](#fig-human-on-loop)).
 
@@ -325,7 +377,15 @@ sequenceDiagram
     deactivate Human
 ```
 
-This is not hypothetical, this is how some of the most advanced AI adoption companies actually operate today, and it represents a pattern that is quietly spreading across frontier companies. The key insight is simple: workplace chats have become a message bus for agent swarms. By operating in channels alongside humans, agents inherit the company's existing identity, permissions, and audit infrastructure. Humans stay in the loop not through clunky approval gates, but because they can literally read the conversation as it happens.
+Parts of this are not hypothetical: frontier organizations already operate agent-assisted incident workflows in shared chat environments, and agent-authored pull requests are no longer unusual. The fully generalized swarm described here is a composite extrapolation of those patterns. The key insight is simple: workplace chats are becoming a message bus for agent swarms. By operating in channels alongside humans, agents inherit the company's existing identity, permissions, and audit infrastructure. But visibility into that conversation is not the same thing as control.
+
+| Oversight model | Human role | What it guarantees | Common failure mode |
+|-----------------|------------|--------------------|---------------------|
+| **Human-in-the-loop** | Explicit approval before high-risk action executes. | Strongest assurance for bounded tasks and separation of duties. | Review fatigue or approval without understanding. |
+| **Human-on-the-loop** | Supervises, audits, and can interrupt after observing the workflow. | Useful for speed and situational awareness, but only if interrupt paths are real and timely. | Visibility is mistaken for approval-quality control. |
+| **Human-out-of-the-loop** | Reviews after the fact, if at all. | Throughput and autonomy. | Drift, silent policy violations, and weak accountability. |
+
+The scenario in this paper is intentionally **human-on-the-loop**. Any claim that human presence in the channel preserves control must therefore be justified against the limitations of that model, not assumed by default.
 
 > ### » The "Illusion of Control", CI/CD Bypass, & The GitOps Boundary
 >
@@ -371,6 +431,8 @@ This is not hypothetical, this is how some of the most advanced AI adoption comp
 
 ### Everyone in the Channel
 
+**Framing:** Forward-looking design assumption informed by early platform trends. Chat-native orchestration exists today, but ADR as a mature control plane remains emergent.
+
 For the security industry, this shift creates a new frontier. Traditional endpoint detection and response (EDR) systems were built to monitor operating-system-level activity on laptops and servers. But when work happens inside a virtual machine running an AI agent loop, those sensors are blind. A new category, sometimes called ADR (Agent Detection and Response), is emerging to fill the gap. The agent platforms themselves are becoming the new endpoints, and the companies building them know it.
 
 What makes frontier approaches remarkable is not just the technology but the philosophy: agents should work where humans work, communicate in human language, and leave a trail that anyone on the team can follow. The most powerful orchestration layer for autonomous AI, it turns out, is not a custom protocol or a proprietary bus or any other new technical solution. It is a chat channel with a few bots and a few people, all working the same incident together at 2 a.m, following the principle of least privilege (see [Orchestration Bus](#fig-orchestration-bus)).
@@ -408,7 +470,7 @@ The future of work is not humans or agents. It is a chat channel where you canno
 
 > ### » The Emergence of Agent Detection and Response (ADR) & The Oversight Agent
 >
-> The cognitive loop of an LLM is opaque to traditional endpoint and network security. Furthermore, a peer-to-peer ecosystem of agents is inherently fragile without an authoritative governance layer. The architecture requires an out-of-band **Oversight Agent** (or Deterministic Supervisor)—an entity with no operational duties other than monitoring swarm semantic health, equipped with the authority to instantly downscope or squelch compromised agents.
+> The cognitive loop of an LLM is opaque to traditional endpoint and network security. Furthermore, a peer-to-peer ecosystem of agents is inherently fragile without an authoritative governance layer. In this paper, **ADR** is used as a **composite control architecture**: prompt-layer observability, policy enforcement, gateway inspection, and deterministic interruption hooks. The **Oversight Agent** (or Deterministic Supervisor) is one possible implementation role inside that architecture, not a magic monolith. Its job is to monitor swarm semantic health and exercise the authority to instantly downscope or squelch compromised agents.
 >
 > #### Adversarial Threat Modeling
 >
@@ -420,6 +482,8 @@ The future of work is not humans or agents. It is a chat channel where you canno
 > The ADR/Oversight system requires deep inspection rights into the agent platform SDK, prompt logs, token streams, memory states, and API gateway payloads. Furthermore, it requires explicit IAM "Kill/Squelch" rights over all operating NHIs.  
 > * **Resulting Risks & New Vulnerabilities**  
 > The ADR system itself becomes a highly privileged entity (Ring 0 of the AI ecosystem). If compromised, the attacker controls the oversight mechanism. Its logs and configurations must be immutable and stored in highly isolated environments to resist tampering by a compromised agentic swarm.
+> * **Failure Modes of the Oversight Layer**  
+> Centralizing semantic telemetry and kill-switch authority creates a control-plane dependency of its own. An ADR design that cannot degrade gracefully, prove tamper resistance, or preserve evidence under partial failure may simply relocate the single point of compromise rather than remove it.
 > 
 > #### Addressing the Challenges: Infrastructure & Telemetry Upgrades
 > 
@@ -445,10 +509,43 @@ The future of work is not humans or agents. It is a chat channel where you canno
 
 <!--\newpage-->
 
+## Control Priorities and Action Agenda
+
+The scenario analysis points to three distinct categories of control work. Conflating them makes the paper less actionable; separating them clarifies what enterprises can do now and where standards or research are still needed.
+
+### Controls teams can implement now
+
+- Run autonomous agents in ephemeral, zero-state compute with immutable teardown semantics.
+- Enforce GitOps-only mutation boundaries so agents can propose changes but not directly mutate production state.
+- Preserve separation of duties between agent authorship and human approval for code, policy, and infrastructure changes.
+- Bind logs, downstream API calls, and pull requests to the specific incident, thread, and identity context that authorized them.
+- Stream prompt, tool-use, and memory-adjacent execution traces into tamper-resistant storage for later forensics.
+
+### Controls that likely require platform or vendor support
+
+- Dynamic contextual downscoping and just-in-time privilege expansion for NHIs.
+- Semantic egress inspection between enterprise retrieval agents and shared communication channels.
+- Signed delegation envelopes and event-bound action tokens for inter-agent tasking.
+- Inline AI gateways that can inspect and terminate risky model requests before tool execution.
+
+### Open research frontiers
+
+- Intent-based authorization for natural-language delegation.
+- Reliable detection of semantic mosaic exfiltration.
+- Inter-agent semantic health attestation.
+- Low-latency parsing of malicious intent in continuous token streams.
+
+From that split follows a practical action agenda for standards bodies, platform teams, and enterprise defenders:
+
+1. Define a portable telemetry model for cognitive and agentic events analogous to existing audit logs.
+2. Standardize provenance, delegation, and revocation primitives for Non-Human Identities.
+3. Normalize GitOps and Everything-as-Code as the default mutation boundary for agent-operated systems.
+4. Build benchmark suites for semantic DLP, prompt-layer detection, and multi-agent abuse-path evaluation.
+
 ## Conclusion: Balancing Utility and Control
 
 The transition from isolated AI tools to autonomous, event-driven swarms does not change what organizations must protect; auditability, separation of duties, least privilege, and data protection remain non-negotiable. What changes, as this analysis demonstrates across every phase of the scenario, are the foundational assumptions underlying how those controls are enforced. Legacy mechanisms remain anchored to human-driven workflows; the attack surface has moved to the semantic layer, where agents negotiate intent, delegate tasks, and accumulate privileges through natural language at machine speed.
 
-Securing this layer demands the enforcement stack this paper outlines — from ephemeral compute and dynamic Non-Human Identity management to semantic egress filtering, immutable GitOps enforcement, and Agent Detection and Response at the prompt layer. But the hard limits are real: intent-based authorization and the semantic mosaic effect represent open research frontiers where no proven successor to legacy assumptions yet exists.
+Securing this layer demands the enforcement stack this paper outlines — from ephemeral compute and dynamic Non-Human Identity management to semantic egress filtering, immutable GitOps enforcement, and Agent Detection and Response at the prompt layer. But the hard limits are real: intent-based authorization and the semantic mosaic effect represent open research frontiers where no proven successor to legacy assumptions yet exists. The right near-term move is therefore not to wait for perfect answers, but to adopt the controls that are already tractable while standardizing the telemetry, provenance, and enforcement primitives the harder problems will depend on.
 
 We have a narrowing opportunity to define the control architecture for autonomous systems — before those systems outscale the controls meant to govern them. The goal is not to constrain their utility, but to **build the resilient, cryptographically sound guardrails** necessary to unleash their full potential securely.
